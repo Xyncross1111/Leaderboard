@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import dbConnect from '../../../../../lib/mongodb';
-import Team from '../../../../../models/Team';
-import { getIO } from '../../../../../lib/socket';
+import dbConnect from '../../../../lib/mongodb';
+import Team from '../../../../models/Team';
+import { getIO } from '../../../../lib/socket';
 
-export async function PUT(request, context) {
+export async function DELETE(request, context) {
   try {
     const session = await getServerSession();
     
-    // Check if user is admin
     if (!session?.user?.role === 'admin') {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -16,22 +15,10 @@ export async function PUT(request, context) {
       );
     }
 
+    const teamId = context.params.id;
     await dbConnect();
-    const { points } = await request.json();
-    const teamId = context.params.id; // Correct way to access route params in Next.js 13+
 
-    if (points < 0) {
-      return NextResponse.json(
-        { error: 'Points cannot be negative' },
-        { status: 400 }
-      );
-    }
-
-    const team = await Team.findByIdAndUpdate(
-      teamId,
-      { points },
-      { new: true }
-    );
+    const team = await Team.findByIdAndDelete(teamId);
 
     if (!team) {
       return NextResponse.json(
@@ -42,7 +29,7 @@ export async function PUT(request, context) {
 
     // Get updated teams list
     const updatedTeams = await Team.find({}).sort({ points: -1 });
-
+    
     try {
       // Try to emit update via socket
       const io = getIO();
@@ -54,11 +41,11 @@ export async function PUT(request, context) {
       // Continue with the response even if socket fails
     }
 
-    return NextResponse.json(team);
+    return NextResponse.json({ message: 'Team deleted successfully' });
   } catch (error) {
-    console.error('Error updating points:', error);
+    console.error('Error deleting team:', error);
     return NextResponse.json(
-      { error: 'Error updating points' },
+      { error: 'Error deleting team' },
       { status: 500 }
     );
   }

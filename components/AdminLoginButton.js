@@ -9,7 +9,7 @@ export default function AdminLoginButton() {
     return (
       <button
         onClick={() => signOut()}
-        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:shadow-lg"
       >
         Sign Out
       </button>
@@ -19,7 +19,7 @@ export default function AdminLoginButton() {
   return (
     <button
       onClick={() => signIn()}
-      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+      className="bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-md text-sm font-medium transition-all hover:shadow-lg"
     >
       Admin Login
     </button>

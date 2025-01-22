@@ -1,22 +1,77 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import TeamCard from './TeamCard';
-import LeaderboardStats from './LeaderboardStats';
+import io from 'socket.io-client';
 
 const fetcher = (...args) => fetch(...args).then(res => res.json());
 
 export default function TeamLeaderboard() {
   const { data: session } = useSession();
   const [search, setSearch] = useState('');
-  const { data: teams, error, mutate } = useSWR('/api/teams', fetcher, {
-    refreshInterval: 5000
-  });
+  const { data: teams, error, mutate } = useSWR('/api/teams', fetcher);
+  const [socket, setSocket] = useState(null);
+  const [socketError, setSocketError] = useState(null);
 
-  if (error) return <div>Error loading teams</div>;
-  if (!teams) return <div>Loading...</div>;
+  useEffect(() => {
+    let mounted = true;
+
+    const initSocket = async () => {
+      try {
+        // Initialize socket server
+        await fetch('/api/socketio');
+        
+        if (!mounted) return;
+
+        const newSocket = io({
+          path: '/api/socketio',
+          addTrailingSlash: false,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 20000,
+        });
+
+        newSocket.on('connect', () => {
+          console.log('Socket connected:', newSocket.id);
+          setSocketError(null);
+        });
+
+        newSocket.on('connect_error', (err) => {
+          console.error('Socket connection error:', err);
+          setSocketError('Unable to establish real-time connection');
+        });
+
+        newSocket.on('teamsUpdate', (updatedTeams) => {
+          console.log('Teams updated via socket');
+          mutate(updatedTeams, false);
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+          console.log('Cleaning up socket connection');
+          newSocket.close();
+        };
+      } catch (err) {
+        console.error('Socket initialization error:', err);
+        setSocketError('Failed to initialize real-time connection');
+      }
+    };
+
+    initSocket();
+
+    return () => {
+      mounted = false;
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [mutate]);
+
+  if (error) return <div className="text-red-500">Error loading teams</div>;
+  if (!teams) return <div className="animate-pulse">Loading...</div>;
 
   const filteredTeams = Array.isArray(teams) ? teams.filter(team => 
     team.name.toLowerCase().includes(search.toLowerCase())
@@ -37,7 +92,6 @@ export default function TeamLeaderboard() {
         throw new Error(data.error || 'Failed to update points');
       }
 
-      // Refresh the teams data
       mutate();
     } catch (error) {
       console.error('Error updating points:', error);
@@ -45,52 +99,57 @@ export default function TeamLeaderboard() {
     }
   };
 
+  const deleteTeam = async (teamId) => {
+    if (!session?.user?.role === 'admin') return;
+    
+    if (!confirm('Are you sure you want to delete this team?')) return;
+
+    try {
+      const res = await fetch(`/api/teams/${teamId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete team');
+      }
+
+      mutate();
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      alert(error.message || 'Failed to delete team');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search teams..."
-            className="w-full p-4 pr-12 rounded-lg border focus:ring-2 focus:ring-blue-500"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <svg
-            className="absolute right-4 top-4 h-6 w-6 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+      {socketError && (
+        <div className="mb-4 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+          {socketError}
         </div>
+      )}
+      
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Search teams..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-4 py-2 rounded-lg border border-card-border bg-card-bg text-text-primary focus:ring-2 focus:ring-accent-primary focus:border-transparent"
+        />
       </div>
-
-      {teams && <LeaderboardStats teams={teams} />}
-
-      <div className="space-y-4 mt-6">
-        {filteredTeams?.map((team) => (
+      
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {filteredTeams.map((team, index) => (
           <TeamCard
             key={team._id}
             team={team}
-            isAdmin={session?.user?.role === 'admin'}
+            position={index + 1}
             onUpdatePoints={updatePoints}
+            onDeleteTeam={deleteTeam}
+            isAdmin={session?.user?.role === 'admin'}
           />
         ))}
-        
-        {filteredTeams?.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500 text-lg">
-              No teams found matching your search.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
