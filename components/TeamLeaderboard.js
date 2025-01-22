@@ -11,7 +11,9 @@ const fetcher = (...args) => fetch(...args).then(res => res.json());
 export default function TeamLeaderboard() {
   const { data: session } = useSession();
   const [search, setSearch] = useState('');
-  const { data: teams, error, mutate } = useSWR('/api/teams', fetcher);
+  const { data: teams, error, mutate } = useSWR('/api/teams', fetcher, {
+    refreshInterval: 3000 // Fallback polling every 3 seconds
+  });
   const [socket, setSocket] = useState(null);
   const [socketError, setSocketError] = useState(null);
 
@@ -28,9 +30,10 @@ export default function TeamLeaderboard() {
         const newSocket = io({
           path: '/api/socketio',
           addTrailingSlash: false,
-          reconnectionAttempts: 5,
+          reconnectionAttempts: 3,
           reconnectionDelay: 1000,
-          timeout: 20000,
+          timeout: 5000,
+          transports: ['polling'], // Force long polling
         });
 
         newSocket.on('connect', () => {
@@ -40,7 +43,7 @@ export default function TeamLeaderboard() {
 
         newSocket.on('connect_error', (err) => {
           console.error('Socket connection error:', err);
-          setSocketError('Unable to establish real-time connection');
+          setSocketError('Using fallback polling for updates');
         });
 
         newSocket.on('teamsUpdate', (updatedTeams) => {
@@ -56,7 +59,7 @@ export default function TeamLeaderboard() {
         };
       } catch (err) {
         console.error('Socket initialization error:', err);
-        setSocketError('Failed to initialize real-time connection');
+        setSocketError('Using fallback polling for updates');
       }
     };
 
