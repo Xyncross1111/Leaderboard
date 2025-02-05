@@ -58,16 +58,28 @@ export default function TeamCard({ team, position, onUpdatePoints, onDeleteTeam,
         <div className="mt-4 space-y-2">
           <div className="flex space-x-2">
             <button
-              onClick={() => handlePointsUpdate(-10)}
+              onClick={() => handlePointsUpdate(-100)}
               className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
             >
-              -10
+              -100
             </button>
             <button
-              onClick={() => handlePointsUpdate(10)}
+              onClick={() => handlePointsUpdate(-200)}
+              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-green-600"
+            >
+              -200
+            </button>
+            <button
+              onClick={() => handlePointsUpdate(250)}
+              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-red-600"
+            >
+              +250
+            </button>
+            <button
+              onClick={() => handlePointsUpdate(500)}
               className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
             >
-              +10
+              +500
             </button>
             <button
               onClick={() => setIsEditing(!isEditing)}

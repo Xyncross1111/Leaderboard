@@ -49,7 +49,7 @@ export async function POST(request) {
     const team = await Team.create({
       name,
       members: members.map(member => ({ name: member })),
-      points: 500
+      points: 700
     });
 
     return NextResponse.json(team, { status: 201 });

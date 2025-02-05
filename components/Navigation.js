@@ -15,7 +15,7 @@ export default function Navigation() {
           href="/" 
           className="text-2xl font-bold text-text-primary hover:text-accent-primary transition-colors"
         >
-          Team Leaderboard
+          Carnival Carousel
         </Link>
         <div className="flex items-center gap-4">
           {isAdmin && (
