@@ -14,7 +14,7 @@ const teamSchema = new mongoose.Schema({
   }],
   points: {
     type: Number,
-    default: 500
+    default: 700
   }
 });
 
